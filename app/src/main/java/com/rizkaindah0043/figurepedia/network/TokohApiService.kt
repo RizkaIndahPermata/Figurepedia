@@ -31,3 +31,5 @@ object TokohApi {
         retrofit.create(TokohApiService::class.java)
     }
 }
+
+enum class ApiStatus { LOADING, SUCCESS }
