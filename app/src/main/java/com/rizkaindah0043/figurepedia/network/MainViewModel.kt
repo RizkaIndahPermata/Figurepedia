@@ -21,7 +21,7 @@ class MainViewModel : ViewModel() {
         retrieveDta()
     }
 
-    private fun retrieveDta() {
+     fun retrieveDta() {
         viewModelScope.launch(Dispatchers.IO) {
             status.value = ApiStatus.LOADING
             try {
@@ -30,6 +30,7 @@ class MainViewModel : ViewModel() {
                 status.value = ApiStatus.SUCCESS
             } catch (e: Exception) {
                 Log.d("MainViewModel", "Failure: ${e.message}")
+                status.value = ApiStatus.FAILED
             }
         }
     }
