@@ -89,10 +89,12 @@ fun MainScreen() {
     val user by dataStore.userFlow.collectAsState(User())
 
     var showDialog by remember { mutableStateOf(false) }
+    var showTokohDialog by remember { mutableStateOf(false) }
 
     var bitmap: Bitmap? by remember { mutableStateOf(null) }
     val launcher = rememberLauncherForActivityResult(CropImageContract()) {
         bitmap = getCroppedImage(context.contentResolver, it)
+        if (bitmap != null) showTokohDialog = true
     }
 
     Scaffold(
@@ -150,6 +152,15 @@ fun MainScreen() {
                 onDismissRequest = { showDialog = false }) {
                 CoroutineScope(Dispatchers.IO).launch { signOut(context, dataStore) }
                 showDialog = false
+            }
+        }
+
+        if (showTokohDialog) {
+            TokohDialog(
+                bitmap = bitmap,
+                onDismissRequest = { showTokohDialog = false }) { name, country, field ->
+                Log.d("TAMBAH", "$name $country $field ditambhakan.")
+                showTokohDialog = false
             }
         }
     }

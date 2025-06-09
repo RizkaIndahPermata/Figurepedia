@@ -7,4 +7,9 @@
     <string name="tutup">Tutup</string>
     <string name="logout">Logout</string>
     <string name="tambah_tokoh">Tambah Tokoh</string>
+    <string name="nama">Nama</string>
+    <string name="asal_negara">Asal Negara</string>
+    <string name="bidang_ilmu">Bidang Ilmu</string>
+    <string name="batal">Batal</string>
+    <string name="simpan">Simpan</string>
 </resources>
