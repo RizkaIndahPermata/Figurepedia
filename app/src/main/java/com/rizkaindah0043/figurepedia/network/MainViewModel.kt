@@ -31,7 +31,9 @@ class MainViewModel : ViewModel() {
             status.value = ApiStatus.LOADING
             try {
                 val response = TokohApi.service.getTokoh(userId)
+                Log.d("MainViewModel", "Data dari API: ${response.people}")
                 data.value = response.people
+                Log.d("MainViewModel", "State data diperbarui")
                 status.value = ApiStatus.SUCCESS
             } catch (e: Exception) {
                 Log.d("MainViewModel", "Failure: ${e.message}")
@@ -56,7 +58,8 @@ class MainViewModel : ViewModel() {
                 )
                 if (result.isSuccessful) {
                     val body = result.body()
-                    if (body?.status == "success") {
+                    Log.d("MainViewModel", "Response status: ${body?.status}")
+                    if (body?.status == "201") {
                         retrieveDta(userId)
                     } else {
                         Log.d("MainViewModel", "Server responded but with failure status: ${body?.status}")
