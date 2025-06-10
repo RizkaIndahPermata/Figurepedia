@@ -74,6 +74,22 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun deleteData(userId: String, id: String) {
+        viewModelScope.launch(Dispatchers.IO){
+            try {
+                val response = TokohApi.service.deleteTokoh(id)
+                if (response.isSuccessful) {
+                    Log.d("MainViewModel", "Data berhasil dihapus.")
+                    retrieveDta(userId)
+                } else {
+                    Log.e("MainViewModel", "Gagal menghapus. Kode: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Exception saat menghapus: ${e.message}")
+            }
+        }
+    }
+
     private fun Bitmap.toMultipartBody(): MultipartBody.Part {
         val stream = ByteArrayOutputStream()
         compress(Bitmap.CompressFormat.JPEG, 80, stream)

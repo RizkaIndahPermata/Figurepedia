@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,6 +96,8 @@ fun MainScreen() {
 
     var showDialog by remember { mutableStateOf(false) }
     var showTokohDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var seletedTokoh by remember { mutableStateOf<Tokoh?>(null) }
 
     var bitmap: Bitmap? by remember { mutableStateOf(null) }
     val launcher = rememberLauncherForActivityResult(CropImageContract()) {
@@ -148,7 +152,15 @@ fun MainScreen() {
         }
     ) {
         innerPadding ->
-        ScreenContent(viewModel, user.email, Modifier.padding(innerPadding))
+        ScreenContent(
+            viewModel,
+            user.email,
+            Modifier.padding(innerPadding),
+            onDelete = { tokoh ->
+                seletedTokoh = tokoh
+                showDeleteDialog = true
+            }
+        )
 
         if (showDialog) {
             ProfilDialog(
@@ -168,6 +180,16 @@ fun MainScreen() {
             }
         }
 
+        if (showDeleteDialog) {
+            DialogHapus(
+                onDismissRequest = { showDeleteDialog = false },
+                onConfirm = {
+                    seletedTokoh?.let { viewModel.deleteData(user.email, it.id) }
+                    showDeleteDialog = false
+                }
+            )
+        }
+
         if (errorMessage != null) {
             Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
             viewModel.clearMessage()
@@ -176,7 +198,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier = Modifier) {
+fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier = Modifier, onDelete: (Tokoh) -> Unit) {
     val data by viewModel.data
     val status by viewModel.status.collectAsState()
 
@@ -199,7 +221,11 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier =
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                items(data) { ListItem(tokoh = it) }
+                items(data) {
+                    ListItem(tokoh = it) {
+                    onDelete(it)
+                    }
+                }
             }
         }
         ApiStatus.FAILED -> {
@@ -222,7 +248,15 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier =
 }
 
 @Composable
-fun ListItem(tokoh: Tokoh) {
+fun ListItem(tokoh: Tokoh, onDelete: () -> Unit) {
+    val context = LocalContext.current
+    val dataStore = UserDataStore(context)
+    val user by dataStore.userFlow.collectAsState(User())
+    val sharedPreferences = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+    sharedPreferences.edit().putString("userId", tokoh.userId).apply()
+    val userId = sharedPreferences.getString("userId", "") ?: ""
+
+    val isLoggedIn = user.email.isNotEmpty()
     Box(
         modifier = Modifier.padding(4.dp).border(1.dp, Color.Gray).height(200.dp),
         contentAlignment = Alignment.BottomCenter
@@ -243,22 +277,40 @@ fun ListItem(tokoh: Tokoh) {
                 .background(Color(red = 0f, green = 0f, blue = 0f, alpha = 0.5f))
                 .padding(4.dp)
         ) {
-            Text(
-                text = tokoh.name,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = tokoh.country,
-                fontStyle = FontStyle.Italic,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
-            Text(
-                text = tokoh.field,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = tokoh.name,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = tokoh.country,
+                        fontStyle = FontStyle.Italic,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                    Text(
+                        text = tokoh.field,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
+                    )
+                }
+                if (isLoggedIn && userId == user.email) {
+                    IconButton(onClick = { onDelete() }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.hapus),
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
         }
     }
 }

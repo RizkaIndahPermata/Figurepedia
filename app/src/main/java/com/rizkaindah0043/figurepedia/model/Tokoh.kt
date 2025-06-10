@@ -7,8 +7,10 @@ data class ApiResponse(
 )
 
 data class Tokoh(
+    val id :String,
+    val userId: String?,
     val name: String,
     val country: String,
     val field: String,
-    val imageUrl: String
+    val imageUrl: String,
 )

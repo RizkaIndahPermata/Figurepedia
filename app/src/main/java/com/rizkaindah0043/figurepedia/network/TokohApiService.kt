@@ -9,11 +9,13 @@ import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 private const val BASE_URL = "https://notableperson.sendiko.my.id/"
@@ -41,6 +43,11 @@ interface TokohApiService {
         @Part("field") field: RequestBody,
         @Part image: MultipartBody.Part
     ): Response<OpStatus>
+
+    @DELETE("people/{id}")
+    suspend fun deleteTokoh(
+        @Path("id") id: String
+    ): Response<Unit>
 }
 
 object TokohApi {
