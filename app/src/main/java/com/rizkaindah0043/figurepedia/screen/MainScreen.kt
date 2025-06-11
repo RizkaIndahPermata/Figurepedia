@@ -98,9 +98,11 @@ fun MainScreen() {
     val viewModel: MainViewModel = viewModel()
     val errorMessage by viewModel.errorMessage
 
+
     var showDialog by remember { mutableStateOf(false) }
     var showTokohDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
     var seletedTokoh by remember { mutableStateOf<Tokoh?>(null) }
 
     var bitmap: Bitmap? by remember { mutableStateOf(null) }
@@ -188,8 +190,7 @@ fun MainScreen() {
                 )
             }
         }
-    ) {
-            innerPadding ->
+    ) { innerPadding ->
         ScreenContent(
             viewModel,
             user.email,
@@ -197,6 +198,10 @@ fun MainScreen() {
             onDelete = { tokoh ->
                 seletedTokoh = tokoh
                 showDeleteDialog = true
+            },
+            onEdit = { tokoh ->
+                seletedTokoh = tokoh
+                showEditDialog = true
             }
         )
 
@@ -211,12 +216,40 @@ fun MainScreen() {
 
         if (showTokohDialog) {
             TokohDialog(
+                userId = user.email,
                 bitmap = bitmap,
                 onDismissRequest = { showTokohDialog = false }) { name, country, field ->
                 viewModel.saveData(user.email, name, country, field, bitmap!!)
                 showTokohDialog = false
             }
         }
+
+        if (showEditDialog && seletedTokoh != null) {
+            Log.d("EditDialog", "Menampilkan dialog edit untuk tokoh: ${seletedTokoh!!.name}")
+            Log.d("EditDialog", "imageUrl yang diterima: ${seletedTokoh!!.imageUrl}")
+            Log.d("EditDialog", "country: ${seletedTokoh!!.country}, field: ${seletedTokoh!!.field}")
+            TokohDialog(
+                userId = user.email,
+                bitmap = null,
+                imageUrl = seletedTokoh!!.imageUrl.replace("http", "https"),
+                nameInitial = seletedTokoh!!.name,
+                countryInitial = seletedTokoh!!.country,
+                fieldInitial = seletedTokoh!!.field,
+                onDismissRequest = { showEditDialog = false },
+                onConfirmation = { name, country, field ->
+                    viewModel.updateData(
+                        userId = user.email,
+                        id = seletedTokoh!!.id,
+                        name = name,
+                        country = country,
+                        field = field,
+                        null
+                    )
+                    showEditDialog = false
+                }
+            )
+        }
+
 
         if (showDeleteDialog) {
             DialogHapus(
@@ -236,7 +269,8 @@ fun MainScreen() {
 }
 
 @Composable
-fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier = Modifier, onDelete: (Tokoh) -> Unit) {
+fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier = Modifier,
+                  onDelete: (Tokoh) -> Unit, onEdit: (Tokoh) -> Unit) {
     val data by viewModel.data
     val status by viewModel.status.collectAsState()
 
@@ -259,10 +293,12 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier =
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                items(data) {
-                    ListItem(tokoh = it) {
-                        onDelete(it)
-                    }
+                items(data) { tokoh ->
+                    ListItem(
+                        tokoh = tokoh,
+                        onDelete = { onDelete(tokoh) },
+                        onEdit = { onEdit(tokoh) }
+                    )
                 }
             }
         }
@@ -286,7 +322,7 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier =
 }
 
 @Composable
-fun ListItem(tokoh: Tokoh, onDelete: () -> Unit) {
+fun ListItem(tokoh: Tokoh, onDelete: () -> Unit, onEdit: () -> Unit) {
     val context = LocalContext.current
     val dataStore = UserDataStore(context)
     val user by dataStore.userFlow.collectAsState(User())
@@ -340,12 +376,21 @@ fun ListItem(tokoh: Tokoh, onDelete: () -> Unit) {
                     )
                 }
                 if (isLoggedIn && userId == user.email) {
-                    IconButton(onClick = { onDelete() }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.hapus),
-                            tint = Color.White
-                        )
+                    Column {
+                        IconButton(onClick = { onEdit() }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_edit_24),
+                                contentDescription = stringResource(R.string.edit),
+                                tint = Color.White
+                            )
+                        }
+                        IconButton(onClick = { onDelete() }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.hapus),
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             }

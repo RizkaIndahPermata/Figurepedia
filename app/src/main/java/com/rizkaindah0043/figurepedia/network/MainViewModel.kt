@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 
 class MainViewModel : ViewModel() {
 
@@ -86,6 +89,36 @@ class MainViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Exception saat menghapus: ${e.message}")
+            }
+        }
+    }
+
+    fun updateData(userId: String, id: String, name: String, country: String, field: String, bitmap: Bitmap?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val namePart = name.toRequestBody("text/plain".toMediaTypeOrNull())
+                val countryPart = country.toRequestBody("text/plain".toMediaTypeOrNull())
+                val fieldPart = field.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                val imagePart = bitmap?.let {
+                    val file = File.createTempFile("image", ".jpg")
+                    val out = FileOutputStream(file)
+                    it.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                    out.flush()
+                    out.close()
+
+                    val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("photo", file.name, requestFile)
+                }
+
+                val response = TokohApi.service.updateTokoh(id, namePart, countryPart, fieldPart, imagePart)
+                if (response.isSuccessful) {
+                    retrieveDta(userId)
+                } else {
+                    Log.e("UpdateTokoh", "Gagal update: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("UpdateTokoh", "Exception: ${e.message}")
             }
         }
     }
