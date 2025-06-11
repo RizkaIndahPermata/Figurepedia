@@ -100,7 +100,7 @@ class MainViewModel : ViewModel() {
                 val countryPart = country.toRequestBody("text/plain".toMediaTypeOrNull())
                 val fieldPart = field.toRequestBody("text/plain".toMediaTypeOrNull())
 
-                val imagePart = bitmap?.let {
+                val image = bitmap?.let {
                     val file = File.createTempFile("image", ".jpg")
                     val out = FileOutputStream(file)
                     it.compress(Bitmap.CompressFormat.JPEG, 100, out)
@@ -108,14 +108,15 @@ class MainViewModel : ViewModel() {
                     out.close()
 
                     val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                    MultipartBody.Part.createFormData("photo", file.name, requestFile)
+                    MultipartBody.Part.createFormData("image", file.name, requestFile)
                 }
 
-                val response = TokohApi.service.updateTokoh(id, namePart, countryPart, fieldPart, imagePart)
+                val response = TokohApi.service.updateTokoh(id, namePart, countryPart, fieldPart, image)
                 if (response.isSuccessful) {
+                    Log.d("UpdateTokoh", "Berhasil update data tokoh: $id")
                     retrieveDta(userId)
                 } else {
-                    Log.e("UpdateTokoh", "Gagal update: ${response.code()}")
+                    Log.e("UpdateTokoh", "Gagal update: ${response.message()}")
                 }
             } catch (e: Exception) {
                 Log.e("UpdateTokoh", "Exception: ${e.message}")

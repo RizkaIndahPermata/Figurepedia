@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -87,7 +88,6 @@ import com.rizkaindah0043.figurepedia.ui.theme.FigurepediaTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +106,7 @@ fun MainScreen() {
     var seletedTokoh by remember { mutableStateOf<Tokoh?>(null) }
 
     var bitmap: Bitmap? by remember { mutableStateOf(null) }
+    var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     var showGalleryPermissionDeniedToast by remember { mutableStateOf(false) }
 
@@ -116,11 +117,19 @@ fun MainScreen() {
         }
     }
     val imageCropperLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
-        bitmap = getCroppedImage(context.contentResolver, result)
-        if (bitmap != null) {
-            showTokohDialog = true
+        val cropped = getCroppedImage(context.contentResolver, result)
+        if (cropped != null) {
+            bitmap = cropped
+            if (showEditDialog) {
+                selectedBitmap = cropped
+            }
+
+            if (showTokohDialog || (!showTokohDialog && !showEditDialog)) {
+                showTokohDialog = true
+            }
         }
     }
+
 
     fun launchImageCropper(includeGallery: Boolean) {
         val options = CropImageContractOptions(
@@ -218,7 +227,19 @@ fun MainScreen() {
             TokohDialog(
                 userId = user.email,
                 bitmap = bitmap,
-                onDismissRequest = { showTokohDialog = false }) { name, country, field ->
+                onDismissRequest = { showTokohDialog = false },
+                onImageClick = {
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.READ_EXTERNAL_STORAGE
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        launchImageCropper(true)
+                    } else {
+                        galleryPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    }
+                }
+            ) { name, country, field ->
                 viewModel.saveData(user.email, name, country, field, bitmap!!)
                 showTokohDialog = false
             }
@@ -230,8 +251,19 @@ fun MainScreen() {
             Log.d("EditDialog", "country: ${seletedTokoh!!.country}, field: ${seletedTokoh!!.field}")
             TokohDialog(
                 userId = user.email,
-                bitmap = null,
-                imageUrl = seletedTokoh!!.imageUrl.replace("http", "https"),
+                bitmap = selectedBitmap,
+                imageUrl = if (selectedBitmap == null) seletedTokoh!!.imageUrl.replace("http", "https") else null,
+                onImageClick = {
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.READ_EXTERNAL_STORAGE
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        launchImageCropper(true)
+                    } else {
+                        galleryPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    }
+                },
                 nameInitial = seletedTokoh!!.name,
                 countryInitial = seletedTokoh!!.country,
                 fieldInitial = seletedTokoh!!.field,
@@ -243,8 +275,9 @@ fun MainScreen() {
                         name = name,
                         country = country,
                         field = field,
-                        null
+                        bitmap = selectedBitmap
                     )
+                    selectedBitmap = null
                     showEditDialog = false
                 }
             )
