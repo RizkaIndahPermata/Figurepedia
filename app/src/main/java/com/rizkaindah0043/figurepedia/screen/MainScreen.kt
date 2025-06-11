@@ -1,7 +1,9 @@
 package com.rizkaindah0043.figurepedia.screen
 
+import android.Manifest
 import android.content.ContentResolver
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -10,6 +12,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +87,7 @@ import com.rizkaindah0043.figurepedia.ui.theme.FigurepediaTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,10 +104,43 @@ fun MainScreen() {
     var seletedTokoh by remember { mutableStateOf<Tokoh?>(null) }
 
     var bitmap: Bitmap? by remember { mutableStateOf(null) }
-    val launcher = rememberLauncherForActivityResult(CropImageContract()) {
-        bitmap = getCroppedImage(context.contentResolver, it)
-        if (bitmap != null) showTokohDialog = true
+
+    var showGalleryPermissionDeniedToast by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showGalleryPermissionDeniedToast) {
+        if (showGalleryPermissionDeniedToast) {
+            Toast.makeText(context, "Izin akses galeri ditolak.", Toast.LENGTH_SHORT).show()
+            showGalleryPermissionDeniedToast = false
+        }
     }
+    val imageCropperLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
+        bitmap = getCroppedImage(context.contentResolver, result)
+        if (bitmap != null) {
+            showTokohDialog = true
+        }
+    }
+
+    fun launchImageCropper(includeGallery: Boolean) {
+        val options = CropImageContractOptions(
+            null, CropImageOptions(
+                imageSourceIncludeGallery = includeGallery,
+                imageSourceIncludeCamera = true,
+                fixAspectRatio = true
+            )
+        )
+        imageCropperLauncher.launch(options)
+    }
+
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            launchImageCropper(true)
+        } else {
+            showGalleryPermissionDeniedToast = true
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -135,14 +172,15 @@ fun MainScreen() {
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                val option = CropImageContractOptions(
-                    null, CropImageOptions(
-                        imageSourceIncludeGallery = false,
-                        imageSourceIncludeCamera = true,
-                        fixAspectRatio = true
-                    )
-                )
-                launcher.launch(option)
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    launchImageCropper(true)
+                } else {
+                    galleryPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
             }) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -151,7 +189,7 @@ fun MainScreen() {
             }
         }
     ) {
-        innerPadding ->
+            innerPadding ->
         ScreenContent(
             viewModel,
             user.email,
@@ -223,7 +261,7 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, modifier: Modifier =
             ) {
                 items(data) {
                     ListItem(tokoh = it) {
-                    onDelete(it)
+                        onDelete(it)
                     }
                 }
             }
